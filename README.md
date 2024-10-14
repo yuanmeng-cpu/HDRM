@@ -2,7 +2,7 @@
 This is the implementation of HDRM
 
 - Model framework
-![Uploading image.png…]()
+![png](https://github.com/yuanmeng-cpu/HDRM/blob/main/hdrm.png)
 
 
 # Requirements
