@@ -3,7 +3,7 @@ This is the implementation of HDRM
 
 - Model framework
 
-![pdf](https://github.com/yuanmeng-cpu/HDRM/blob/main/hdrm.png)
+![png](https://github.com/yuanmeng-cpu/HDRM/blob/main/hdrm.png)
 
 # Requirements
 PyTorch  1.11.0
