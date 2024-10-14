@@ -2,6 +2,7 @@
 This is the implementation of HDRM
 
 - Model framework
+  
 ![png](https://github.com/yuanmeng-cpu/HDRM/blob/main/hdrm.png)
 
 
@@ -19,6 +20,30 @@ numpy 1.19.1
 scipy 1.5.4
 
 tqdm 4.48.2
+
+## Code Structures
+
+```
+.
+├── hgcn_utils
+│   ├── math_utils.py
+│   ├── train_utils.py
+├── manifolds
+│   ├── base.py
+│   ├── hyperboloid.py
+├── rgd
+│   ├── rsgd.py
+├── dataloader.py
+├── main.py
+├── model.py
+├── parse.py
+├── Procedure.py
+├── register.py
+├── train.py
+├── utils.py
+└── world.py
+
+```
 
 # Run Code
 python train.py
