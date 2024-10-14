@@ -50,7 +50,7 @@ python train.py
 
 ## Dataset
 
-|  Dataset   |  Users  |  Items(C)  |  Interactions(C)  |   Item(N)   |   Interactions |
+|  Dataset   |  Users  |  Items(C)  |  Interactions(C)  |   Item(N)   |   Interactions(N) |
 |:----------:|:--------:|:--------:|:---------------:|:-----------:|:-----------:|
 |    Amazon-book    |  1088,822   |  94,949   |     3,146,256     | 178,181  |3,145,223  |
 |  Yelp2020   |  54,574   |  34,395  |    1,402,736    | 77,405  |1,471,675  |
