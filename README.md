@@ -1,8 +1,7 @@
-- Model framework
-
-
 # HDRM
 This is the implementation of HDRM
+
+- Model framework
 
 # Requirements
 PyTorch  1.11.0
