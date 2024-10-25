@@ -28,9 +28,15 @@ except:
 class BPRLoss:
     def __init__(self,
                  recmodel : PairWiseModel,
+                 user_reverse_model,
+                 item_reverse_model,
+                 diffusion_model,
                  config : dict):
         self.model = recmodel
         self.config = config
+        self.user_reverse_model = user_reverse_model
+        self.item_reverse_model = item_reverse_model
+        self.diffusion_model = diffusion_model
         self.weight_decay = config['decay']
         self.lr = config['lr']
         self.diff_lr = config['diff_lr']
@@ -43,6 +49,9 @@ class BPRLoss:
         # self.opt = optim.Adam(recmodel.parameters(), lr=self.lr)
         # self.opt = RiemannianSGD(params=recmodel.parameters(), lr=self.lr)
         self.opt = RiemannianSGD(params=recmodel.parameters(), lr=self.lr,weight_decay=self.weight_decay, momentum=self.momentum)
+        
+        self.opt_user_dnn = optim.Adam(user_reverse_model.parameters(), lr=self.diff_lr)
+        self.opt_item_dnn = optim.Adam(item_reverse_model.parameters(), lr=self.diff_lr)
 
     def drop_rate_schedule(self, iteration):
         drop_rate = np.linspace(0, self.config['drop_rate']**self.config['exponent'], self.config['num_gradual'])
@@ -52,13 +61,29 @@ class BPRLoss:
             return self.config['drop_rate']
     
     def call_bpr(self, users, pos, neg, iter):
-        loss = self.model.bpr_loss(users, pos, neg)
+        loss,re_loss, pos_score = self.model.bpr_loss(users, pos, neg, self.user_reverse_model, self.item_reverse_model, self.diffusion_model)
         # reg_loss = reg_loss * self.weight_decay
         # loss = loss + reg_loss
+        
+        # re_loss=torch.sum(re_loss)
+        
+        pos_score_ = torch.sigmoid(pos_score).detach()
+        # print("pos_score_:",pos_score_)
+        # print("self.config['beta']:",self.config['beta'])
+        weight = torch.pow(pos_score_, self.config['beta'])
+        # print("weight:",weight)
 
         # loss = loss.mean()
+        loss = (1 - self.alpha) * loss + self.alpha * re_loss
+        loss = loss * weight
+        loss = loss.mean()
+        
+        self.opt_user_dnn.zero_grad()
+        self.opt_item_dnn.zero_grad()
         self.opt.zero_grad()
         loss.backward()
+        self.opt_item_dnn.step()
+        self.opt_user_dnn.step()
         self.opt.step()
         
         return loss.cpu().item()
