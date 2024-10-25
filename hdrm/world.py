@@ -63,6 +63,8 @@ config['beta'] = args.beta
 # balance rec loss and reconstruct loss
 config['alpha'] = args.alpha
 
+config['restrict'] = args.restrict
+
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 GPU = torch.cuda.is_available()
 device = torch.device('cuda' if GPU else "cpu")
