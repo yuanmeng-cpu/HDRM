@@ -20,6 +20,10 @@ scipy 1.5.4
 
 tqdm 4.48.2
 
+# Datasets
+The Amazon-book dataset can be downloaded through the following link:
+[Amazon-book Dataset Download Link](https://drive.google.com/file/d/1QYmTpnChuii9CvPBWFecFmhUHczJtjan/view)
+
 ## Code Structures
 
 ```
