@@ -9,7 +9,7 @@ import dataloader
 from os.path import join
 from parse import parse_args
 import torch.utils.data as data
-
+import diffusion as gd
 # ==============================
 utils.set_seed(world.seed)
 print(">>SEED:", world.seed)
@@ -31,16 +31,32 @@ out_dims = eval(args.dims) + [args.recdim]
 in_dims = out_dims[::-1]
 
 
+user_reverse_model = register.DIFF_MODELS['dnn'](in_dims, out_dims, args.emb_size, time_type="cat", norm=args.norm)
+user_reverse_model = user_reverse_model.to(world.device)
+
+item_reverse_model = register.DIFF_MODELS['dnn'](in_dims, out_dims, args.emb_size, time_type="cat", norm=args.norm)
+item_reverse_model = item_reverse_model.to(world.device)
+
+# define Gaussian Diffusion
+if args.mean_type == 'x0':
+    mean_type = gd.ModelMeanType.START_X
+elif args.mean_type == 'eps':
+    mean_type = gd.ModelMeanType.EPSILON
+else:
+    raise ValueError("Unimplemented mean type %s" % args.mean_type)
+diffusion = gd.GaussianDiffusion(world.config, mean_type, args.noise_schedule, \
+        args.noise_scale, args.noise_min, args.noise_max, args.steps,args.restrict,world.device).to(world.device)
+
 
 # define bpr
-bpr = utils.BPRLoss(Recmodel, world.config)
+bpr = utils.BPRLoss(Recmodel, user_reverse_model, item_reverse_model, diffusion, world.config)
 
 weight_file, user_weight_file, item_weight_file = utils.getFileName()
 print(f"load and save to {weight_file}")
 if world.LOAD:
     try:
-        Recmodel.load_state_dict(torch.load('./pretrain_checkpoint/lgn-ml-1m-log_margin_0.1_batch_8192_lr_0.001_layers_3.pth.tar',map_location=torch.device('cpu')))
-        print(f"loaded model weights from ./pretrain_checkpoint/lgn-ml-1m-log_margin_0.1_batch_8192_lr_0.001_layers_3.pth.tar")
+        Recmodel.load_state_dict(torch.load('./pretrain_checkpoint/lgn-ml-1m.pth.tar',map_location=torch.device('cpu')))
+        print(f"loaded model weights from ./pretrain_checkpoint/lgn-ml-1m.pth.tar")
     except FileNotFoundError:
         print(f"{weight_file} not exists, start from beginning")
 Neg_k = 1
@@ -63,10 +79,12 @@ try:
     recall_list = []
     cnt = 0
     iter = 0
-    # for param in Recmodel.parameters():
-    #     param.requires_grad = False
+    for param in Recmodel.parameters():
+        param.requires_grad = False
     for epoch in range(world.TRAIN_epochs):
         Recmodel.train()
+        user_reverse_model.train()
+        item_reverse_model.train()
         # print(user_reverse_model)
         bpr_: utils.BPRLoss = bpr
         train_loader.dataset.get_pair_bpr()
@@ -85,13 +103,15 @@ try:
         print(f'EPOCH[{epoch+1}/{world.TRAIN_epochs}] loss:{aver_loss}')
         
         if (epoch+1) % 5 == 0:
-            results = Procedure.Test(dataset, Recmodel, epoch, w, world.config['multicore'])
+            results = Procedure.Test(dataset, Recmodel,user_reverse_model, item_reverse_model, diffusion, epoch, w, world.config['multicore'])
             Procedure.print_results(results)
             if results[1][0] > best_recall:
                 best_epoch = epoch
                 best_recall = results[1][0]
                 best_v = results
                 torch.save(Recmodel.state_dict(), weight_file)
+                torch.save(user_reverse_model.state_dict(), user_weight_file)
+                torch.save(item_reverse_model.state_dict(), item_weight_file)
             if epoch == 30:
                 recall_list.append((epoch, results[1][0]))
             if epoch > 30:  # epoch20以后如果出现连续40个recall@10不涨，直接停止训练
@@ -105,9 +125,10 @@ try:
 
     print("End train and valid. Best validation epoch is {:03d}.".format(best_epoch))
     Recmodel.load_state_dict(torch.load(weight_file,map_location=torch.device('cpu')))
-    # Recmodel.load_state_dict(torch.load('./code/checkpoints/2224-yelp.pth.tar',map_location=torch.device('cpu')))
-    best_results_valid = Procedure.Test_all(dataset, Recmodel, w, world.config['multicore'], 0)
-    best_results_test = Procedure.Test_all(dataset, Recmodel, w, world.config['multicore'], 1)
+    user_reverse_model.load_state_dict(torch.load(user_weight_file,map_location=torch.device('cpu')))   
+    item_reverse_model.load_state_dict(torch.load(item_weight_file,map_location=torch.device('cpu')))    
+    best_results_valid = Procedure.Test_all(dataset, Recmodel, user_reverse_model, item_reverse_model, diffusion, epoch, w, world.config['multicore'], 0)
+    best_results_test = Procedure.Test_all(dataset, Recmodel, user_reverse_model, item_reverse_model, diffusion, epoch, w, world.config['multicore'], 1)
     print("Validation:")
     Procedure.print_results_all(None, best_results_valid, None)
     print("Test:")
