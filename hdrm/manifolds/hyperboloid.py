@@ -29,6 +29,13 @@ class Hyperboloid(Manifold):
     def minkowski_norm(self, u, keepdim=True):
         dot = self.minkowski_dot(u, u, keepdim=keepdim)
         return torch.sqrt(torch.clamp(dot, min=self.eps[u.dtype]))
+    
+    def fermi_dirac_decoder(self,x,t,r):
+        # 计算分母: exp(d^2 - r)/t + 1
+        denominator = torch.exp(x - r) / t + 1
+        # 计算最终评分: 1 / denominator
+        scores = 1.0 / denominator
+        return scores
 
     def sqdist(self, x, y, c):
         K = 1. / c
