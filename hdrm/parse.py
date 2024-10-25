@@ -3,7 +3,7 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Go lightGCN")
-    parser.add_argument('--batch_size', type=int,default=20000,
+    parser.add_argument('--batch_size', type=int,default=8192,
                         help="the batch size for bpr loss training procedure")
     parser.add_argument('--recdim', type=int,default=64,
                         help="the embedding size of lightGCN")
@@ -64,13 +64,15 @@ def parse_args():
     parser.add_argument('--sampling_steps', type=int, default=2, help='steps of the forward process during inference')
     parser.add_argument('--reweight', type=bool, default=True, help='assign different weight to different timestep or not')    
 
-    parser.add_argument('--alpha', type=float, default=0.1, help='balance rec loss and reconstruct loss')
+    parser.add_argument('--alpha', type=float, default=0, help='balance rec loss and reconstruct loss')
 
     # hyp
     parser.add_argument('--c', type=float, default=1, help='hyperbolic radius, set to None for trainable curvature')
     
-    parser.add_argument('--weight_decay', type=float, default=0.001, help='l2 regularization strength')
+    parser.add_argument('--weight_decay', type=float, default=0.01, help='l2 regularization strength')
     parser.add_argument('--momentum', type=float, default=0.95, help='momentum in optimizer')
+    
+    parser.add_argument('--restrict', type=bool, default=False, help='whether use the geometric contraints')
 
     # denoising 
     parser.add_argument('--drop_rate', 
