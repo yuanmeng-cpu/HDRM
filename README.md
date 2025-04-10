@@ -52,8 +52,14 @@ The Amazon-book dataset can be downloaded through the following link:
 
 ```
 
-# Run Code
+# Run ML-1M
 python train.py
+
+# Run Amazon-book
+python train_amazon.py
+
+# Run Yelp2020
+python train_yelp.py
 
 
 ## Dataset
