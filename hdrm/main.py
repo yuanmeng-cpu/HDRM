@@ -45,7 +45,7 @@ elif args.mean_type == 'eps':
 else:
     raise ValueError("Unimplemented mean type %s" % args.mean_type)
 diffusion = gd.GaussianDiffusion(world.config, mean_type, args.noise_schedule, \
-        args.noise_scale, args.noise_min, args.noise_max, args.steps,args.restrict,world.device).to(world.device)
+        args.noise_scale, args.noise_min, args.noise_max, args.steps,args.restrict, world.device).to(world.device)
 
 
 # define bpr
@@ -55,8 +55,8 @@ weight_file, user_weight_file, item_weight_file = utils.getFileName()
 print(f"load and save to {weight_file}")
 if world.LOAD:
     try:
-        Recmodel.load_state_dict(torch.load('./pretrain_checkpoint/lgn-ml-1m.pth.tar',map_location=torch.device('cpu')))
-        print(f"loaded model weights from ./pretrain_checkpoint/lgn-ml-1m.pth.tar")
+        Recmodel.load_state_dict(torch.load('',map_location=torch.device('cpu')))
+        print(f"loaded model weights from ")
     except FileNotFoundError:
         print(f"{weight_file} not exists, start from beginning")
 Neg_k = 1
@@ -114,7 +114,7 @@ try:
                 torch.save(item_reverse_model.state_dict(), item_weight_file)
             if epoch == 30:
                 recall_list.append((epoch, results[1][0]))
-            if epoch > 30:  # epoch20以后如果出现连续40个recall@10不涨，直接停止训练
+            if epoch > 30:  
                 recall_list.append((epoch, results[1][0]))
                 if results[1][0] < best_recall:
                     cnt += 1
