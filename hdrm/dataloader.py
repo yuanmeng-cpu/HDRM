@@ -241,15 +241,6 @@ class DiffData(BasicDataset):
 				end = time()
 				print(f"costing {end - s}s, saved norm_mat...")
 				sp.save_npz(self.path + '/adj_csr.npz', adj_csr)
-
-		# if self.split == True:
-		# 	self.Graph = self._split_A_hat(adj_csr)
-		# 	print("done split matrix")
-		# else:
-		# 	self.Graph = self._convert_sp_mat_to_sp_tensor(adj_csr)
-		# 	self.Graph = self.Graph.coalesce().to(world.device)
-		# 	print("don't split the matrix")
-		# return self.Graph
 				self.Graph = normalize(adj_csr + sp.eye(adj_csr.shape[0]))
 				self.Graph = sparse_mx_to_torch_sparse_tensor(self.Graph).to(world.device)
 				print(" type Graph", type(self.Graph))
