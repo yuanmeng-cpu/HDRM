@@ -53,7 +53,7 @@ The Amazon-book dataset can be downloaded through the following link:
 ```
 
 # Run ML-1M
-python train.py
+python train_ml.py
 
 # Run Amazon-book
 python train_amazon.py
