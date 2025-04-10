@@ -65,18 +65,10 @@ class BPRLoss:
         # reg_loss = reg_loss * self.weight_decay
         # loss = loss + reg_loss
         
-        # re_loss=torch.sum(re_loss)
-        
-        pos_score_ = torch.sigmoid(pos_score).detach()
-        # print("pos_score_:",pos_score_)
-        # print("self.config['beta']:",self.config['beta'])
-        weight = torch.pow(pos_score_, self.config['beta'])
-        # print("weight:",weight)
+        re_loss=torch.sum(re_loss)
 
         # loss = loss.mean()
         loss = (1 - self.alpha) * loss + self.alpha * re_loss
-        loss = loss * weight
-        loss = loss.mean()
         
         self.opt_user_dnn.zero_grad()
         self.opt_item_dnn.zero_grad()
