@@ -3,9 +3,9 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Go lightGCN")
-    parser.add_argument('--batch_size', type=int,default=8192,
+    parser.add_argument('--batch_size', type=int,default=20000,
                         help="the batch size for bpr loss training procedure")
-    parser.add_argument('--recdim', type=int,default=64,
+    parser.add_argument('--recdim', type=int,default=512,
                         help="the embedding size of lightGCN")
     parser.add_argument('--layer', type=int,default=3,
                         help="the layer num of lightGCN")
@@ -21,7 +21,7 @@ def parse_args():
                         help="the fold num used to split large adj matrix, like gowalla")
     parser.add_argument('--testbatch', type=int,default=512,
                         help="the batch size of users for testing")
-    parser.add_argument('--data_path', type=str, default='/storage/jjzhao/jujia_ws/diff/data/yelp_noisy',
+    parser.add_argument('--data_path', type=str, default='',
                         help='the path to dataset')
     parser.add_argument('--dataset', type=str,default='yelp_noisy',
                         help="available datasets: [lastfm, gowalla, yelp2018, amazon-book]")
