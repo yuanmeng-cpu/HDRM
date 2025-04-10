@@ -105,6 +105,11 @@ class LightGCN(BasicModel):
         # reverse
         user_model_output = user_reverse_model(noise_user_emb, ori_item_emb, ts)
         item_model_output = item_reverse_model(noise_item_emb, ori_user_emb, ts)
+        
+        epsilon = 0.05
+        user_model_output = (1-epsilon) * ori_user_emb + epsilon * user_model_output
+        item_model_output = (1-epsilon) * ori_item_emb + epsilon * item_model_output
+
 
         # get recons loss就是mse，diffusion的实现方法也是一样的，pt没啥用
         user_recons = diff_model.get_reconstruct_loss(ori_user_emb, user_model_output, pt)
@@ -164,6 +169,9 @@ class LightGCN(BasicModel):
                 noise_emb = out["mean"] + nonzero_mask * torch.exp(0.5 * out["log_variance"]) * noise
             else:
                 noise_emb = out["mean"]
+                
+        epsilon = 0.05
+        noise_emb = (1-epsilon) * user_emb + epsilon * noise_emb
 
         return noise_emb, items
     
@@ -172,11 +180,6 @@ class LightGCN(BasicModel):
 
         item_emb = self.manifold.proj(self.manifold.expmap0(item_emb, c=self.c), c=self.c)
         all_items = self.manifold.proj(self.manifold.expmap0(all_items, c=self.c), c=self.c)
-        
-        item_emb1 = item_emb.detach().cpu().numpy()
-        np.save('item_emb.npy', item_emb1)
-        all_items1 = all_items.detach().cpu().numpy()
-        np.save('all_items.npy', all_items1)
 
         rating = self.rounding_inner(item_emb, all_items)
         return rating
@@ -192,20 +195,10 @@ class LightGCN(BasicModel):
 
             emb_out = all_items
             sqdist = self.manifold.sqdist(emb_in, emb_out, self.c)
-
-            #通过负号把距离转化为概率，距离越小概率越大
             probs = sqdist.detach().cpu().numpy() * -1
             probs_matrix[i] = np.reshape(probs, [-1, ])
 
         return torch.from_numpy(probs_matrix)
-        # item_emb_expanded = item_emb.unsqueeze(1)  # Shape: [bs_user, 1, emb]
-        # all_items_expanded = all_items.unsqueeze(0)  # Shape: [1, item_num, emb]
-
-        # Element-wise multiplication
-        # dot_product = torch.sum(item_emb_expanded * all_items_expanded, dim=2) 
-
-        # return dot_product
-    
     
     def getEmbedding(self, users, pos_items, neg_items, user_reverse_model, item_reverse_model, diff_model):
         users_emb, pos_emb,recons_loss, all_items = self.computer(diff_model, user_reverse_model, item_reverse_model, users, pos_items)
@@ -226,14 +219,10 @@ class LightGCN(BasicModel):
         pos_scores = self.manifold.sqdist(users_emb, pos_emb, self.c)
         neg_scores = self.manifold.sqdist(users_emb, neg_emb, self.c)
         
-        scores=self.manifold.fermi_dirac_decoder(pos_scores, 1, 0)
-        # print("scores:",scores)
-        # print("pos_scores",pos_scores)
-        
         loss = pos_scores - neg_scores+ 0.2
         loss[loss < 0] = 0
-        # loss = torch.sum(loss)
-        return loss,reconstruct_loss,scores
+        loss = torch.sum(loss)
+        return loss,reconstruct_loss,pos_scores
     
     def apply_T_noise(self, cat_emb, diff_model):
         t = torch.tensor([self.config['steps'] - 1] * cat_emb.shape[0]).to(cat_emb.device)
