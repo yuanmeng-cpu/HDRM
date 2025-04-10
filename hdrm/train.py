@@ -7,10 +7,10 @@ import subprocess
 import sys
 import re
 
-dataset = 'amazon-book'
+dataset = 'ml-1m'
 log_path = './log/'
 ckpt_path = './code/checkpoints/'
-data_path = '../data/amazon-book'
+data_path = '../data/ml-1m'
 epoch_num = 1000
 # noise_schedule = 'linear'
 
@@ -92,7 +92,7 @@ def run_program(lr, dlr, layer, alpha, steps, sample, min_, max_, dims, scale, a
 	
 	log_name = f'{log_num}_{dataset}_lr{lr}_difflr{dlr}_layer{layer}_alpha{alpha}_steps{steps}_sample{sample}_min{min_}_max{max_}_dims{dims}_scale{scale}_act{act}_beta{beta}_{log}.txt'
 	# cmd = f'python -u main.py --model_name={model_name} --data_path={dataset} --batch_size=256 --l_r={lr} --reg_weight={reg} --num_neg={num_neg} --has_v=True --has_t=True --lr_lambda={lam} --num_sample={rou} --temp_value={temp} --dim_E={dim_E} --gpu={gpu} > {log_path}{log_name}'
-	cmd = f'python -u main.py --load=1 --act={act} --beta={beta} --dataset={dataset} --data_path={data_path}  --lr={lr} --diff_lr={dlr} --layer={layer} --alpha={alpha} --steps={steps} --epochs=1000 --sampling_steps={sample} --noise_scale={scale} --noise_min={min_} --noise_max={max_}  --sampling_steps={sample} --dims={dims} --log_name={log} --gpu={gpu} > {log_path}{log_name}'
+	cmd = f'python -u main.py --load=1 --act={act} --beta={beta} --dataset={dataset} --data_path={data_path}  --lr={lr} --diff_lr={dlr} --layer={layer} --alpha={alpha} --steps={steps} --epochs=10 --sampling_steps={sample} --noise_scale={scale} --noise_min={min_} --noise_max={max_}  --sampling_steps={sample} --dims={dims} --log_name={log} --gpu={gpu} > {log_path}{log_name}'
 #     res = os.popen(cmd).readlines()
 	p = subprocess.Popen(cmd, shell=True)
 	return p
@@ -100,7 +100,7 @@ def run_program(lr, dlr, layer, alpha, steps, sample, min_, max_, dims, scale, a
 def load_program(lr, dlr, layer, alpha, steps, sample, min_, max_, dims, scale, act, beta, log, log_num, gpu):
 	log_name = f'{log_num}_load_{dataset}_lr{lr}_difflr{dlr}_layer{layer}_alpha{alpha}_steps{steps}_sample{sample}_min{min_}_max{max_}_dims{dims}_act{act}_scale{scale}_beta{beta}_{log}.txt'
 	# cmd = f'python -u main.py --model_name={model_name} --data_path={dataset} --batch_size=256 --l_r={lr} --reg_weight={reg} --num_neg={num_neg} --has_v=True --has_t=True --lr_lambda={lam} --num_sample={rou} --temp_value={temp} --dim_E={dim_E} --gpu={gpu} > {log_path}{log_name}'
-	cmd = f'python -u main.py --load=1 --act={act} --beta={beta} --dataset={dataset} --data_path={data_path}  --lr={lr} --diff_lr={dlr} --layer={layer} --alpha={alpha} --steps={steps} --epochs=1000 --sampling_steps={sample} --noise_scale={scale} --noise_min={min_} --noise_max={max_}  --sampling_steps={sample} --dims={dims} --log_name={log} --gpu={gpu} > {log_path}{log_name}'
+	cmd = f'python -u main.py --load=1 --act={act} --beta={beta} --dataset={dataset} --data_path={data_path}  --lr={lr} --diff_lr={dlr} --layer={layer} --alpha={alpha} --steps={steps} --epochs=10 --sampling_steps={sample} --noise_scale={scale} --noise_min={min_} --noise_max={max_}  --sampling_steps={sample} --dims={dims} --log_name={log} --gpu={gpu} > {log_path}{log_name}'
 #     res = os.popen(cmd).readlines()
 	p = subprocess.Popen(cmd, shell=True)
 	return p
@@ -130,18 +130,18 @@ act_list = ['relu']
 steps_list = [50]
 
 # sample_steps_list = [1, 1.5, 1.25]
-sample_steps_list = [1.25]
+sample_steps_list = [1]
 
 # min_list = [1e-4, 1e-3]
-min_list = [1e-4]
+min_list = [1e-5]
 
 # max_list = [1e-3, 1e-2]
-max_list = [1e-3]
+max_list = [1e-4]
 
 # scale_list = [1e-5, 1e-4, 1e-3]
-scale_list = [1e-2]
+scale_list = [1e-5]
 
-lr_list = [0.005]
+lr_list = [1e-5]
 diff_lr_list = [1e-3]
 
 gpu_list = ['0']
@@ -150,7 +150,7 @@ layer_list = [3]
 
 # alpha
 # alpha_list = [0.1,0.2,0.3,0.4,0.5]
-alpha_list = [0.1]
+alpha_list = [0.05]
 
 # denoising
 beta_list = [0]
