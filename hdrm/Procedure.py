@@ -43,9 +43,6 @@ def BPR_train_original(dataset, recommend_model, loss_class, epoch, neg_k=1, w=N
                                                    batch_size=world.config['bpr_batch_size'])):
         cri = bpr.stageOne(batch_users, batch_pos, batch_neg)
         aver_loss += cri
-        # print(f'BPRLoss/BPR', cri, epoch * int(len(users) / world.config['bpr_batch_size']) + batch_i)
-        # if world.tensorboard:
-        #     w.add_scalar(f'BPRLoss/BPR', cri, epoch * int(len(users) / world.config['bpr_batch_size']) + batch_i)
     aver_loss = aver_loss / total_batch
     time_info = timer.dict()
     timer.zero()
@@ -67,52 +64,49 @@ def test_one_batch(X):
             'ndcg':np.array(ndcg)}
         
 def computeTopNAccuracy(GroundTruth, predictedIndices, topN):
-    precision = [] 
-    recall = [] 
-    NDCG = [] 
+    precision = []
+    recall = []
+    NDCG = []
     MRR = []
-    for index in range(len(topN)):
-        sumForPrecision = 0
-        sumForRecall = 0
-        sumForNdcg = 0
-        sumForMRR = 0
-        cnt = 0
-        for i in range(len(predictedIndices)):  # for a user,
-            if len(GroundTruth[i]) != 0:
-                mrrFlag = True
-                userHit = 0
-                userMRR = 0
-                dcg = 0
-                idcg = 0
-                idcgCount = len(GroundTruth[i])
-                ndcg = 0
-                hit = []
-                for j in range(topN[index]):
-                    if predictedIndices[i][j] in GroundTruth[i]:
-                        # if Hit!
-                        dcg += 1.0/math.log2(j + 2)
-                        if mrrFlag:
-                            userMRR = (1.0/(j+1.0))
-                            mrrFlag = False
-                        userHit += 1 
-                    if idcgCount > 0:
-                        idcg += 1.0/math.log2(j + 2)
-                        idcgCount = idcgCount-1              
-                if(idcg != 0):
-                    ndcg += (dcg/idcg)
-                    
-                sumForPrecision += userHit / topN[index]
-                sumForRecall += userHit / len(GroundTruth[i])               
-                sumForNdcg += ndcg
-                sumForMRR += userMRR
-                cnt += 1
-            # else:
-            #     print('OPS')
-        precision.append(round(sumForPrecision / cnt, 4))
-        recall.append(round(sumForRecall / cnt, 4))
-        NDCG.append(round(sumForNdcg / cnt, 4))
-        MRR.append(round(sumForMRR / cnt, 4))
-        
+    
+    predicted_indices_np = np.array([p.numpy() for p in predictedIndices])
+    
+    for n_idx, k in enumerate(topN):
+        topk_indices = predicted_indices_np[:, :k]
+        precision_per_user = np.zeros(len(GroundTruth))
+        recall_per_user = np.zeros(len(GroundTruth))
+        ndcg_per_user = np.zeros(len(GroundTruth))
+        mrr_per_user = np.zeros(len(GroundTruth))
+        valid_users = 0
+        for u_idx, ground_truth in enumerate(GroundTruth):
+            if len(ground_truth) > 0:
+                valid_users += 1
+                user_topk = topk_indices[u_idx]
+                hits = np.isin(user_topk, ground_truth)
+                num_hits = np.sum(hits)
+                precision_per_user[u_idx] = num_hits / k
+                recall_per_user[u_idx] = num_hits / len(ground_truth)
+                idcg_weights = 1.0 / np.log2(np.arange(2, min(len(ground_truth), k) + 2))
+                idcg = np.sum(idcg_weights)
+                hit_positions = np.where(hits)[0]
+                if len(hit_positions) > 0:
+                    dcg_weights = 1.0 / np.log2(hit_positions + 2)
+                    dcg = np.sum(dcg_weights)
+                    ndcg_per_user[u_idx] = dcg / idcg if idcg > 0 else 0
+                first_hit = np.argmax(hits) if num_hits > 0 else -1
+                if first_hit != -1:
+                    mrr_per_user[u_idx] = 1.0 / (first_hit + 1)
+        if valid_users > 0:
+            precision.append(round(np.sum(precision_per_user) / valid_users, 4))
+            recall.append(round(np.sum(recall_per_user) / valid_users, 4))
+            NDCG.append(round(np.sum(ndcg_per_user) / valid_users, 4))
+            MRR.append(round(np.sum(mrr_per_user) / valid_users, 4))
+        else:
+            precision.append(0)
+            recall.append(0)
+            NDCG.append(0)
+            MRR.append(0)
+    
     return precision, recall, NDCG, MRR
 
 def print_results(loss, valid_result, test_result):
@@ -133,45 +127,28 @@ def print_results(loss, valid_result, test_result):
                             '-'.join([str(x) for x in test_result[3]])))
 
 def shuffle_and_get_half_with_seed(my_list, seed_value):
-    # Make a copy of the list to avoid modifying the original
     shuffled_list = my_list.copy()
-
-    # Set a fixed seed for the random number generator
     random.seed(seed_value)
-
-    # Shuffle the list in place
     random.shuffle(shuffled_list)
-
-    # Calculate the index for the middle of the list (half the length)
     half_length = len(shuffled_list) // 2
-
-    # Get the first half of the shuffled list using slicing
     first_half = shuffled_list[:half_length]
-
     return first_half
 
 
-def Test(dataset, Recmodel, epoch, w=None, multicore=0, unbias=None):
+def Test(dataset, Recmodel,user_reverse_model, item_reverse_model, diff_model, epoch, w=None, multicore=0, unbias=None):
     u_batch_size = world.config['test_u_batch_size']
     dataset: utils.BasicDataset
     Recmodel: model.LightGCN
-    
-    # eval mode with no dropout
     Recmodel = Recmodel.eval()
+    user_reverse_model = user_reverse_model.eval()
+    item_reverse_model = item_reverse_model.eval()
     validDict = dataset.valid_dict
     testDict = dataset.test_dict
-    # if flag == 0:
-    #     testDict = dataset.valid_dict
-    # else:
-    #     testDict = dataset.test_dict
     max_K = max(world.topks)
     if multicore == 1:
         pool = multiprocessing.Pool(CORES)
-
     with torch.no_grad():
         users = list(validDict.keys())
-        users = shuffle_and_get_half_with_seed(users, 42)
-
         users_list = []
         test_rating_list = []
         valid_rating_list = []
@@ -185,7 +162,7 @@ def Test(dataset, Recmodel, epoch, w=None, multicore=0, unbias=None):
             valid_groundTrue = [validDict[u] for u in batch_users]
             batch_users_gpu = torch.Tensor(batch_users).long()
             batch_users_gpu = batch_users_gpu.to(world.device)
-            valid_rating = Recmodel.getUsersRating(batch_users_gpu, allPos)
+            valid_rating = Recmodel.getUsersRating(batch_users_gpu, allPos, user_reverse_model, item_reverse_model, diff_model)
 
             valid_exclude_index = []
             valid_exclude_items = []
@@ -201,12 +178,10 @@ def Test(dataset, Recmodel, epoch, w=None, multicore=0, unbias=None):
                 test_exclude_index.extend([range_i] * len(items))
                 test_exclude_items.extend(items)
 
-            # get the exclu the rating of test and valid
             test_rating = valid_rating.clone()
             valid_rating[valid_exclude_index, valid_exclude_items] = -(1<<10)
             test_rating[test_exclude_index, test_exclude_items] = -(1<<10)
 
-            # _, rating_K = torch.topk(rating, k=max_K, largest=False)
             _, test_rating_K = torch.topk(test_rating, k=max_K)
             _, valid_rating_K = torch.topk(valid_rating, k=max_K)
             test_rating = test_rating_K.cpu().numpy()
@@ -244,12 +219,14 @@ def print_results_all(loss, valid_result, test_result):
                             '-'.join([str(x) for x in test_result[2]]), 
                             '-'.join([str(x) for x in test_result[3]])))
         
-def Test_all(dataset, Recmodel, w=None, multicore=0, flag=None, unbias=None):
+def Test_all(dataset, Recmodel,user_reverse_model, item_reverse_model, diff_model, epoch, w=None, multicore=0, flag=None, unbias=None):
     u_batch_size = world.config['test_u_batch_size']
     dataset: utils.BasicDataset
     Recmodel: model.LightGCN
     # eval mode with no dropout
     Recmodel = Recmodel.eval()
+    user_reverse_model = user_reverse_model.eval()
+    item_reverse_model = item_reverse_model.eval()
     if flag == 0:
         testDict = dataset.valid_dict
     else:
@@ -266,17 +243,13 @@ def Test_all(dataset, Recmodel, w=None, multicore=0, flag=None, unbias=None):
         users_list = []
         rating_list = []
         groundTrue_list = []
-        # auc_record = []
-        # ratings = []
         total_batch = len(users) // u_batch_size + 1
         for batch_users in utils.minibatch(users, batch_size=u_batch_size):
             allPos = dataset.getUserPosItems(batch_users)
             groundTrue = [testDict[u] for u in batch_users]
             batch_users_gpu = torch.Tensor(batch_users).long()
             batch_users_gpu = batch_users_gpu.to(world.device)
-            rating = Recmodel.getUsersRating(batch_users_gpu, allPos)
-            #ipdb.set_trace()
-            #rating = rating.cpu()
+            rating = Recmodel.getUsersRating(batch_users_gpu, allPos, user_reverse_model, item_reverse_model, diff_model)
             exclude_index = []
             exclude_items = []
             valid_items = dataset.getUserValidItems(batch_users) # exclude validation items
@@ -288,18 +261,13 @@ def Test_all(dataset, Recmodel, w=None, multicore=0, flag=None, unbias=None):
                     exclude_index.extend([range_i] * len(items))
                     exclude_items.extend(items)
             rating[exclude_index, exclude_items] = -(1<<10)
-
-            # _, rating_K = torch.topk(rating, k=max_K, largest=False)
             _, rating_K = torch.topk(rating, k=max_K)
             rating = rating.cpu().numpy()
 
             del rating
             users_list.append(batch_users)
-            # rating_list.append(rating_K.cpu()) # shape: n_batch, user_bs, max_k
-            # groundTrue_list.append(groundTrue)
             rating_list.extend(rating_K.cpu()) # shape: n_batch, user_bs, max_k
             groundTrue_list.extend(groundTrue)
-        #ipdb.set_trace()
         assert total_batch == len(users_list)
         precision, recall, NDCG, MRR = computeTopNAccuracy(groundTrue_list,rating_list,[10,20,50,100])
     
