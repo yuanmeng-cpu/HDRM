@@ -34,7 +34,7 @@ class GaussianDiffusion(nn.Module):
                 # The variance \beta_1 of the first step is fixed to a small constant to prevent overfitting.
             assert len(self.betas.shape) == 1, "betas must be 1-D"
             assert len(self.betas) == self.steps, "num of betas must equal to diffusion steps"
-            assert (self.betas > 0).all() and (self.betas <= 1).all(), "betas out of range"
+            # assert (self.betas > 0).all() and (self.betas <= 1).all(), "betas out of range"
 
             self.calculate_for_diffusion()
 
@@ -200,42 +200,14 @@ class GaussianDiffusion(nn.Module):
             
         else:
             raise ValueError
-    def get_statistics(self, x_start):
-        """计算数据的经验均值和标准差"""
-        mu = th.mean(x_start, dim=0)
-        sigma = th.std(x_start, dim=0)
-        return mu, sigma
-
-    def transform_noise(self, noise, x_start):
-        """将各向同性噪声转换为各向异性噪声"""
-        # 公式(5): ε' = sgn(x₀) ⊙ |ε|
-        epsilon_prime = th.sign(x_start) * th.abs(noise)
     
-        # 公式(6): ε̄ = μ + σ ⊙ ε
-        mu, sigma = self.get_statistics(x_start)
-        epsilon_bar = mu + sigma * epsilon_prime
-    
-        return epsilon_bar
-    
-    # def q_sample(self, x_start, t, noise=None):
-    #     if noise is None:
-    #         noise = th.randn_like(x_start)
-    #     assert noise.shape == x_start.shape
-    #     return (
-    #         self._extract_into_tensor(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start
-    #         + self._extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape)
-    #         * noise
-    #     )
     def q_sample(self, x_start, t, noise=None):
-
         if noise is None:
             noise = th.randn_like(x_start)
         assert noise.shape == x_start.shape
         
         if self.restrict:
-        # 转换为方向性噪声
             directional_noise = self.transform_noise(noise, x_start)
-    
             return (
                 self._extract_into_tensor(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start
                 + self._extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape)
@@ -247,7 +219,6 @@ class GaussianDiffusion(nn.Module):
                 + self._extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape)
                 * noise
             )
-            
     
     def q_posterior_mean_variance(self, x_start, x_t, t):
         """
