@@ -20,7 +20,6 @@ MODELS = {
     'lgn': model.LightGCN
 }
 
-# DIFF_MODELS = {
-#     'dnn': model.DNN,
-#     'transformer': model.Diff_Transformer
-# }
+DIFF_MODELS = {
+    'dnn': model.DNN
+}
