@@ -27,6 +27,9 @@ tqdm 4.48.2
 # Datasets
 The Amazon-book dataset can be downloaded through the following link:
 [Amazon-book Dataset Download Link](https://drive.google.com/file/d/1QYmTpnChuii9CvPBWFecFmhUHczJtjan/view)
+You can download the pre-trained weights through the following link.
+[pre-trained weights Download Link](https://drive.google.com/drive/folders/1wFmQbXPj-bxUct4frUZ8U5i4zaD3n7OQ?usp=sharing
+)
 
 ## Code Structures
 
