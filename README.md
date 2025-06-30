@@ -1,6 +1,8 @@
 # HDRM  
-This is the implementation of HDRM  [Hyperbolic Diffusion Recommender Model](https://arxiv.org/pdf/2504.01541)
-Meng Yuan, Yutian Xiao, Wei Chen, Chu Zhao, Deqing Wang, and Fuzhen Zhuang.  
+This is the implementation of HDRM  
+
+[Hyperbolic Diffusion Recommender Model](https://arxiv.org/pdf/2504.01541)
+
 In Proceedings of The 2025 Web Conference (WWW 2025)
 
 
